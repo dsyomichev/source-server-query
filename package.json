@@ -1,14 +1,10 @@
 {
-  "name": "source-query",
+  "name": "source-server-query",
   "version": "0.0.1",
   "description": "Query Source game servers using the Source Query Protocol.",
   "main": "index.js",
   "types": "index.d.ts",
-  "keywords": [
-    "Steam",
-    "Source",
-    "Query"
-  ],
+  "keywords": ["Steam", "Source", "Query"],
   "author": {
     "name": "Daniel Syomichev",
     "email": "dsyomichev@gmail.com"

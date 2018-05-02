@@ -7,19 +7,19 @@ A library for querying Source servers using the [Source Query Protocol](https://
 You can add this module by running:
 
 ```
-yarn add source-query
+yarn add source-server-query
 ```
 
 OR
 
 ```
-npm i source-query
+npm i source-server-query
 ```
 
 and then requiring it using:
 
 ```javascript
-const query = require("source-query");
+const query = require("source-server-query");
 ```
 
 ## Methods
