@@ -126,8 +126,11 @@ const players = async (address, port, timeout = 1000) => {
   let offset = 1;
   let players = [];
   let keys = ["index", "name", "score", "duration"];
-  for (let i = 0; i < count; i++) {
+  while (offset <= buffer.byteLength) {
     let list = bp.unpack("<bSif", buffer, offset);
+    if (list === undefined) {
+      break;
+    }
     let player = {};
     for (let i = 0; i < list.length; i++) {
       player[keys[i]] = list[i];
@@ -135,7 +138,6 @@ const players = async (address, port, timeout = 1000) => {
     offset += bp.calcLength("<bSif", list);
     players.push(player);
   }
-
   return players;
 };
 
