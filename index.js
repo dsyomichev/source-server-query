@@ -34,13 +34,20 @@ const send = (buffer, address, port, code, timeout = 1000) => {
   });
 };
 
-const challenge = async (address, port, code, timeout = 1000) => {
+const challenge = async (address, port, code, timeout = 1000, payload = null) => {
   if (!address || typeof address != "string") return new Error("Missing/Invalid param 'address'");
   if (!port || typeof port != "number") return new Error("Missing/Invalid param 'port'");
   if (!code || typeof code != "string") return new Error("Missing/Invalid param 'code'");
   if (typeof timeout != "number") return new Error("Invalid Param 'timeout'");
 
-  let buffer = send(bp.pack("<isi", [-1, code, -1]), address, port, "A", timeout);
+  let buffer = null
+  // check for payload, as INFO challenge requires that, otherwise send without payload
+  if (payload != null && code === "T") {
+    buffer = send(bp.pack("<isSi", [-1, code, "Source Engine Query", -1]), address, port, "A", timeout);
+  } else {
+    buffer = send(bp.pack("<isi", [-1, code, -1]), address, port, "A", timeout);
+  }
+
   try {
     buffer = await buffer;
   } catch (err) {
@@ -54,7 +61,14 @@ const info = async (address, port, timeout = 1000) => {
   if (!port || typeof port != "number") return new Error("Missing/Invalid param 'port'");
   if (typeof timeout != "number") return new Error("Invalid Param 'timeout'");
 
-  let buffer = send(bp.pack("<isS", [-1, "T", "Source Engine Query"]), address, port, "I", timeout);
+  let key = challenge(address, port, "T", timeout, "Source Engine Query");
+  try {
+    key = await key;
+  } catch (err) {
+    return typeof err == "string" ? new Error(err) : err;
+  }
+
+  let buffer = send(bp.pack("<isSi", [-1, "T", "Source Engine Query", key]), address, port, "I", timeout);
   try {
     buffer = await buffer;
   } catch (err) {
@@ -126,11 +140,8 @@ const players = async (address, port, timeout = 1000) => {
   let offset = 1;
   let players = [];
   let keys = ["index", "name", "score", "duration"];
-  while (offset <= buffer.byteLength) {
+  for (let i = 0; i < count; i++) {
     let list = bp.unpack("<bSif", buffer, offset);
-    if (list === undefined) {
-      break;
-    }
     let player = {};
     for (let i = 0; i < list.length; i++) {
       player[keys[i]] = list[i];
@@ -138,6 +149,7 @@ const players = async (address, port, timeout = 1000) => {
     offset += bp.calcLength("<bSif", list);
     players.push(player);
   }
+
   return players;
 };
 
