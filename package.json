@@ -1,6 +1,6 @@
 {
   "name": "source-server-query",
-  "version": "2.0.0",
+  "version": "2.0.3",
   "description": "Query Source game servers using the Source Query Protocol.",
   "main": "index.js",
   "types": "index.d.ts",

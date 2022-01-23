@@ -3,7 +3,7 @@ declare module "source-server-query" {
    * The response received with an AS2_INFO query. Uses descriptions for data from https://developer.valvesoftware.com/wiki/Server_queries.
    * This also contains more information about each item.
    */
-  export interface InfoResponse {
+  export type InfoResponse = {
     protocol: number /* Protocol version used by the server. */;
     name: string /* Name of the server. */;
     map: string /* Map the server has currently loaded. */;
@@ -22,9 +22,9 @@ declare module "source-server-query" {
     steamid?: [number, number, true] /* Server's SteamID. */; // See below about int64 in JS.
     tvport?: number /* Spectator port number for SourceTV. */;
     tvname?: number /* Name of the spectator server for SourceTV. */;
-    keywords: string /* Tags that describe the game according to the server (for future use.) */; // Unsure if always comma separated so leaving as string.
-    gameid: [number, number, true] /* The server's 64-bit GameID. */;
-  }
+    keywords?: string[] /* Tags that describe the game according to the server (for future use.) */;
+    gameid?: [number, number, true] /* The server's 64-bit GameID. */;
+  };
 
   /**
    * JavaScript 64 Bit Integers:
@@ -70,7 +70,7 @@ declare module "source-server-query" {
   ): Promise<PlayersResponse>;
 
   /*
-   * The response recevied from an A2S_RULES query.
+   * The response recevied from an A2S_RULES query. Currently only supports single packet responses.
    */
   export type RulesResponse = {
     name: string /* Name of the rule. */;

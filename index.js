@@ -3,100 +3,115 @@ const jsp = require("jspack").jspack;
 
 const client = require("dgram").createSocket("udp4");
 
-const send = (buffer, address, port, codes, timeout) => {
+const send = (request, remote, timeout) => {
   return new Promise((resolve, reject) => {
-    let time = setTimeout(() => {
-      client.removeListener("message", response);
-      return reject(new Error("Request timed out."));
+    const onTimeout = setTimeout(() => {
+      client.removeListener("message", onResponse);
+      return reject(new Error("Request timeout out."));
     }, timeout);
 
-    let response = (buffer, remote) => {
-      if (remote.address != address || remote.port != port) return;
-      if (buffer.length < 1) return;
-      if (!codes.includes(bp.unpack("<s", buffer, 4)[0])) return;
-      client.removeListener("message", response);
-      clearTimeout(time);
-      return resolve(buffer.slice(5));
+    const onResponse = (response, rinfo) => {
+      if (rinfo.address != rinfo.address || rinfo.port != rinfo.port) return;
+
+      client.removeListener("message", onResponse);
+      clearTimeout(onTimeout);
+      return resolve(response);
     };
 
-    client.on("message", response);
-
-    client.send(buffer, 0, buffer.length, port, address);
+    client.on("message", onResponse);
+    client.send(request, remote.port, remote.address);
   });
 };
 
-module.exports.info = async (address, port, timeout = 1000) => {
-  let buffer = bp.pack("<isSi", [-1, "T", "Source Engine Query", -1]);
-  buffer = await send(buffer, address, port, "AI", timeout);
+const challenge = async (remote, format, payload, timeout) => {
+  let request = bp.pack(format, payload);
+  const response = await send(request, remote, timeout);
 
-  if (bp.unpack("<s", buffer)[0] == "A") {
-    let challenge = bp.unpack("<i", buffer, 1)[0];
-    buffer = bp.pack("<isSi", [-1, "T", "Source Engine Query", challenge]);
-    buffer = await send(buffer, address, port, "I", timeout);
+  if (bp.unpack("<s", response, 4)[0] === "A") {
+    const code = bp.unpack("<i", response, 5)[0];
+    request = bp.pack("<isi", [-1, payload[1], code]);
+    return await send(request, remote, timeout);
+  } else return response;
+};
+
+module.exports.info = async (address, port, timeout = 1000) => {
+  const query = await challenge(
+    { address, port },
+    "<isSi",
+    [-1, "T", "Source Engine Query", -1],
+    timeout
+  );
+
+  const format = `<
+    B(protocol)
+    S(name)
+    S(map)
+    S(folder)
+    S(game)
+    h(id)
+    B(players)
+    B(maxplayers)
+    B(bots)
+    c(servertype)
+    c(environment)
+    B(visibility)
+    B(vac)
+    S(version)`;
+
+  const info = bp.unpack(format, query.slice(4));
+  const extra = query.slice(bp.calcLength(format, Object.values(info)) + 4);
+
+  if (extra.length < 1) return data;
+
+  let offset = 1;
+  const edf = bp.unpack("<B", extra)[0];
+
+  if (edf & 0x80) {
+    info.port = bp.unpack("<h", extra, offset)[0];
+    offset += 2;
   }
 
-  const format =
-    "<B(protocol)S(name)S(map)S(folder)S(game)h(id)B(players)B(maxplayers)B(bots)c(servertype)c(environment)B(visibility)B(vac)S(version)";
-  const info = bp.unpack(format, buffer);
-  buffer = buffer.slice(bp.calcLength(format, Object.values(info)));
+  if (edf & 0x10) {
+    info.steamid = jsp.Unpack("<Q", extra, offset)[0];
+    offset += 8;
+  }
 
-  if (buffer.length > 1) {
-    let offset = 1;
-    const EDF = bp.unpack("<B", buffer)[0];
+  if (edf & 0x40) {
+    const tvinfo = bp.unpack("<hS", extra, offset);
+    info.tvport = tvinfo[0];
+    info.tvname = tvinfo[1];
+    offset += bp.calcLength("<hS", tvinfo);
+  }
 
-    if ((EDF & 0x80) !== 0) {
-      info.port = bp.unpack("<h", buffer, offset)[0];
-      offset += 2;
-    }
+  if (edf & 0x20) {
+    info.keywords = bp.unpack("<S", extra, offset)[0].split(",");
+    offset += bp.calcLength("<S", info.keywords);
+  }
 
-    if ((EDF & 0x10) !== 0) {
-      info.steamid = jsp.Unpack("<Q", buffer, offset)[0];
-      offset += 8;
-    }
-
-    if ((EDF & 0x40) !== 0) {
-      const tvinfo = bp.unpack("<h(tvport)S(tvname)", buffer, offset);
-      info = { ...info, ...tvinfo };
-      offset += bp.calcLength("<hS", tvinfo);
-    }
-
-    if ((EDF & 0x20) !== 0) {
-      info.keywords = bp.unpack("<S", buffer, offset)[0];
-      offset += bp.calcLength("<S", info.keywords);
-    }
-
-    if ((EDF & 0x01) !== 0) {
-      info.gameid = jsp.Unpack("<Q", buffer, offset)[0];
-      offset += 4;
-    }
+  if (edf & 0x01) {
+    info.gameid = jsp.Unpack("<Q", extra, offset)[0];
+    offset += 4;
   }
 
   return info;
 };
 
-const challenge = async (address, port, code, timeout) => {
-  let buffer;
-
-  buffer = bp.pack("<isi", [-1, code, -1]);
-  buffer = await send(buffer, address, port, "A", timeout);
-
-  return bp.unpack("<i", buffer)[0];
-};
-
 module.exports.players = async (address, port, timeout = 1000) => {
-  const key = await challenge(address, port, "U", timeout);
+  const response = await challenge(
+    { address, port },
+    "<isi",
+    [-1, "U", -1],
+    timeout
+  );
 
-  let buffer = bp.pack("<isi", [-1, "U", key]);
-  buffer = await send(buffer, address, port, "D", timeout);
-
-  const count = bp.unpack("<B", buffer)[0];
-  let offset = 1;
+  const count = bp.unpack("<B", response, 5)[0];
+  let offset = 6;
 
   const players = [];
+  const format = "<b(index)S(name)i(score)f(duration)";
 
   for (let i = 0; i < count; i++) {
-    const format = "<b(index)S(name)i(score)f(duration)";
-    const player = bp.unpack(format, buffer, offset);
+    const player = bp.unpack(format, response, offset);
 
     offset += bp.calcLength(format, Object.values(player));
     players.push(player);
@@ -106,20 +121,23 @@ module.exports.players = async (address, port, timeout = 1000) => {
 };
 
 module.exports.rules = async (address, port, timeout = 1000) => {
-  const key = await challenge(address, port, "V", timeout);
+  const response = await challenge(
+    { address, port },
+    "<isi",
+    [-1, "V", -1],
+    timeout
+  );
 
-  let buffer = bp.pack("<isi", [-1, "V", key]);
-  buffer = await send(buffer, address, port, "E", timeout);
-
-  const count = bp.unpack("<h", buffer)[0];
-  let offset = 2;
+  const count = bp.unpack("<h", response, 5)[0];
+  let offset = 7;
 
   const rules = [];
+  const format = "<S(name)S(value)";
 
   for (let i = 0; i < count; i++) {
-    const rule = bp.unpack("<S(name)S(value)", buffer, offset);
+    const rule = bp.unpack(format, response, offset);
 
-    offset += bp.calcLength("<S(name)S(value)", Object.values(rule));
+    offset += bp.calcLength(format, Object.values(rule));
     rules.push(rule);
   }
 
