@@ -1,115 +1,72 @@
 const bp = require("bufferpack");
+const jsp = require("jspack").jspack;
+
 const client = require("dgram").createSocket("udp4");
 
-const send = (buffer, address, port, code, timeout = 1000) => {
+const send = (buffer, address, port, codes, timeout) => {
   return new Promise((resolve, reject) => {
-    if (!buffer || !buffer instanceof Buffer) return reject(new Error("Missing/Invalid param 'buffer'"));
-    if (!address || typeof address != "string") return reject(new Error("Missing/Invalid param 'address'"));
-    if (!port || typeof port != "number") return reject(new Error("Missing/Invalid param 'port'"));
-    if (!code || typeof code != "string") return reject(new Error("Missing/Invalid param 'code'"));
-    if (typeof timeout != "number") return reject(new Error("Invalid Param 'timeout'"));
+    let time = setTimeout(() => {
+      client.removeListener("message", response);
+      return reject(new Error("Request timed out."));
+    }, timeout);
 
-    client.send(buffer, 0, buffer.length, port, address, (err, bytes) => {
-      if (err) return reject(typeof err == "string" ? new Error(err) : err);
+    let response = (buffer, remote) => {
+      if (remote.address != address || remote.port != port) return;
+      if (buffer.length < 1) return;
+      if (!codes.includes(bp.unpack("<s", buffer, 4)[0])) return;
+      client.removeListener("message", response);
+      clearTimeout(time);
+      return resolve(buffer.slice(5));
+    };
 
-      let response = (buffer, remote) => {
-        //Any unmatched parameter will return rather than error so that multiple requests can be made at once.
-        if (remote.address != address) return;
-        if (remote.port != port) return;
-        if (buffer.length < 1) return;
-        buffer = buffer.slice("4");
-        if (bp.unpack("<s", buffer)[0] !== code) return;
-        client.removeListener("message", response);
-        clearTimeout(time);
-        return resolve(buffer.slice(1));
-      };
+    client.on("message", response);
 
-      let time = setTimeout(() => {
-        client.removeListener("message", response);
-        return reject(new Error("Connection timed out."));
-      }, timeout);
-
-      client.on("message", response);
-    });
+    client.send(buffer, 0, buffer.length, port, address);
   });
 };
 
-const challenge = async (address, port, code, timeout = 1000, payload = null) => {
-  if (!address || typeof address != "string") return new Error("Missing/Invalid param 'address'");
-  if (!port || typeof port != "number") return new Error("Missing/Invalid param 'port'");
-  if (!code || typeof code != "string") return new Error("Missing/Invalid param 'code'");
-  if (typeof timeout != "number") return new Error("Invalid Param 'timeout'");
+module.exports.info = async (address, port, timeout = 1000) => {
+  let buffer = bp.pack("<isSi", [-1, "T", "Source Engine Query", -1]);
+  buffer = await send(buffer, address, port, "AI", timeout);
 
-  let buffer = null
-  // check for payload, as INFO challenge requires that, otherwise send without payload
-  if (payload != null && code === "T") {
-    buffer = send(bp.pack("<isSi", [-1, code, "Source Engine Query", -1]), address, port, "A", timeout);
-  } else {
-    buffer = send(bp.pack("<isi", [-1, code, -1]), address, port, "A", timeout);
+  if (bp.unpack("<s", buffer)[0] == "A") {
+    let challenge = bp.unpack("<i", buffer, 1)[0];
+    buffer = bp.pack("<isSi", [-1, "T", "Source Engine Query", challenge]);
+    buffer = await send(buffer, address, port, "I", timeout);
   }
 
-  try {
-    buffer = await buffer;
-  } catch (err) {
-    return typeof err == "string" ? new Error(err) : err;
-  }
-  return bp.unpack("<i", buffer)[0];
-};
-
-const info = async (address, port, timeout = 1000) => {
-  if (!address || typeof address != "string") return new Error("Missing/Invalid param 'address'");
-  if (!port || typeof port != "number") return new Error("Missing/Invalid param 'port'");
-  if (typeof timeout != "number") return new Error("Invalid Param 'timeout'");
-
-  let key = challenge(address, port, "T", timeout, "Source Engine Query");
-  try {
-    key = await key;
-  } catch (err) {
-    return typeof err == "string" ? new Error(err) : err;
-  }
-
-  let buffer = send(bp.pack("<isSi", [-1, "T", "Source Engine Query", key]), address, port, "I", timeout);
-  try {
-    buffer = await buffer;
-  } catch (err) {
-    return typeof err == "string" ? new Error(err) : err;
-  }
-
-  let list = bp.unpack("<bSSSShBBBssBB", buffer);
-  let keys = ["protocol", "name", "map", "folder", "game", "appid", "playersnum", "maxplayers", "botsnum", "servertype", "environment", "visibility", "vac"];
-  let info = {};
-  for (let i = 0; i < list.length; i++) {
-    info[keys[i]] = list[i];
-  }
-
-  buffer = buffer.slice(bp.calcLength("<bSSSShBBBssBB", list));
-  info.version = bp.unpack("<S", buffer)[0];
-  buffer = buffer.slice(bp.calcLength("<S", [info.version]));
+  const format =
+    "<B(protocol)S(name)S(map)S(folder)S(game)h(id)B(players)B(maxplayers)B(bots)c(servertype)c(environment)B(visibility)B(vac)S(version)";
+  const info = bp.unpack(format, buffer);
+  buffer = buffer.slice(bp.calcLength(format, Object.values(info)));
 
   if (buffer.length > 1) {
-    let offset = 0;
-    let EDF = bp.unpack("<b", buffer)[0];
-    offset += 1;
+    let offset = 1;
+    const EDF = bp.unpack("<B", buffer)[0];
+
     if ((EDF & 0x80) !== 0) {
       info.port = bp.unpack("<h", buffer, offset)[0];
       offset += 2;
     }
+
     if ((EDF & 0x10) !== 0) {
-      info.steamID = bp.unpack("<ii", buffer, offset)[0];
+      info.steamid = jsp.Unpack("<Q", buffer, offset)[0];
       offset += 8;
     }
+
     if ((EDF & 0x40) !== 0) {
-      let tvinfo = bp.unpack("<hS", buffer, offset);
-      info["tv-port"] = tvinfo[0];
-      info["tv-name"] = tvinfo[1];
+      const tvinfo = bp.unpack("<h(tvport)S(tvname)", buffer, offset);
+      info = { ...info, ...tvinfo };
       offset += bp.calcLength("<hS", tvinfo);
     }
+
     if ((EDF & 0x20) !== 0) {
       info.keywords = bp.unpack("<S", buffer, offset)[0];
       offset += bp.calcLength("<S", info.keywords);
     }
+
     if ((EDF & 0x01) !== 0) {
-      info.gameID = bp.unpack("<i", buffer, offset)[0];
+      info.gameid = jsp.Unpack("<Q", buffer, offset)[0];
       offset += 4;
     }
   }
@@ -117,78 +74,56 @@ const info = async (address, port, timeout = 1000) => {
   return info;
 };
 
-const players = async (address, port, timeout = 1000) => {
-  if (!address || typeof address != "string") return new Error("Missing/Invalid param 'address'");
-  if (!port || typeof port != "number") return new Error("Missing/Invalid param 'port'");
-  if (typeof timeout != "number") return new Error("Invalid Param 'timeout'");
+const challenge = async (address, port, code, timeout) => {
+  let buffer;
 
-  let key = challenge(address, port, "U", timeout);
-  try {
-    key = await key;
-  } catch (err) {
-    return typeof err == "string" ? new Error(err) : err;
-  }
+  buffer = bp.pack("<isi", [-1, code, -1]);
+  buffer = await send(buffer, address, port, "A", timeout);
 
-  let buffer = send(bp.pack("<isi", [-1, "U", key]), address, port, "D", timeout);
-  try {
-    buffer = await buffer;
-  } catch (err) {
-    return typeof err == "string" ? new Error(err) : err;
-  }
+  return bp.unpack("<i", buffer)[0];
+};
 
-  let count = bp.unpack("<B", buffer)[0];
+module.exports.players = async (address, port, timeout = 1000) => {
+  const key = await challenge(address, port, "U", timeout);
+
+  let buffer = bp.pack("<isi", [-1, "U", key]);
+  buffer = await send(buffer, address, port, "D", timeout);
+
+  const count = bp.unpack("<B", buffer)[0];
   let offset = 1;
-  let players = [];
-  let keys = ["index", "name", "score", "duration"];
+
+  const players = [];
+
   for (let i = 0; i < count; i++) {
-    let list = bp.unpack("<bSif", buffer, offset);
-    let player = {};
-    for (let i = 0; i < list.length; i++) {
-      player[keys[i]] = list[i];
-    }
-    offset += bp.calcLength("<bSif", list);
+    const format = "<b(index)S(name)i(score)f(duration)";
+    const player = bp.unpack(format, buffer, offset);
+
+    offset += bp.calcLength(format, Object.values(player));
     players.push(player);
   }
 
   return players;
 };
 
-const rules = async (address, port, timeout = 1000) => {
-  if (!address || typeof address != "string") return new Error("Missing/Invalid param 'address'");
-  if (!port || typeof port != "number") return new Error("Missing/Invalid param 'port'");
-  if (typeof timeout != "number") return new Error("Invalid Param 'timeout'");
+module.exports.rules = async (address, port, timeout = 1000) => {
+  const key = await challenge(address, port, "V", timeout);
 
-  let key = challenge(address, port, "V", timeout);
-  try {
-    key = await key;
-  } catch (err) {
-    return typeof err == "string" ? new Error(err) : err;
-  }
+  let buffer = bp.pack("<isi", [-1, "V", key]);
+  buffer = await send(buffer, address, port, "E", timeout);
 
-  let buffer = send(bp.pack("<isi", [-1, "V", key]), address, port, "E", timeout);
-  try {
-    buffer = await buffer;
-  } catch (err) {
-    return typeof err == "string" ? new Error(err) : err;
-  }
-
-  let count = bp.unpack("<h", buffer)[0];
-  let rules = [];
-  let keys = ["name", "value"];
+  const count = bp.unpack("<h", buffer)[0];
   let offset = 2;
+
+  const rules = [];
+
   for (let i = 0; i < count; i++) {
-    let list = bp.unpack("<SS", buffer, offset);
-    let rule = {};
-    for (let i = 0; i < list.length; i++) {
-      rule[keys[i]] = list[i];
-    }
+    const rule = bp.unpack("<S(name)S(value)", buffer, offset);
+
+    offset += bp.calcLength("<S(name)S(value)", Object.values(rule));
     rules.push(rule);
-    offset += bp.calcLength("<SS", list);
   }
 
   return rules;
 };
 
-const destroy = () => client.close();
-
-module.exports = { info, players, rules, destroy };
+module.exports.close = () => client.close();

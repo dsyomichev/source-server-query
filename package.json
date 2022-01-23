@@ -1,18 +1,22 @@
 {
   "name": "source-server-query",
-  "version": "0.0.1",
+  "version": "2.0.0",
   "description": "Query Source game servers using the Source Query Protocol.",
   "main": "index.js",
   "types": "index.d.ts",
-  "keywords": ["Steam", "Source", "Query"],
+  "keywords": [
+    "Steam",
+    "Source",
+    "Query"
+  ],
   "author": {
     "name": "Daniel Syomichev",
     "email": "dsyomichev@gmail.com"
   },
   "repository": "git@github.com:dsyomichev/SourceQuery.git",
   "license": "MIT",
-  "private": false,
   "dependencies": {
-    "bufferpack": "^0.0.6"
+    "bufferpack": "0.0.6",
+    "jspack": "0.0.4"
   }
 }

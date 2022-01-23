@@ -7,100 +7,33 @@ A library for querying Source servers using the [Source Query Protocol](https://
 You can add this module by running:
 
 ```
-yarn add source-server-query
-```
-
-OR
-
-```
 npm i source-server-query
 ```
 
-and then requiring it using:
+and then use it:
 
 ```javascript
-const query = require("source-server-query");
+const { info, players, rules, close } = require("source-server-query");
 ```
 
-## Methods
+## Usage
 
-### `info(address, <port, [timeout]>) => Promise<{}>`
-
-Returns information from an A2S_INFO query.
-
-**Params:**
-
-* address - The IP address of the Source server.
-* port - The port of the Source server.
-* timeout - The timeout before an error is thrown. Defaults to 1000ms.
-
-**Example:**
+Each method: `info`, `players`, `rules`, uses the same arguments of an address and port. The port is the UDP query port, not the game port.
 
 ```javascript
-const query = require("source-query");
-query
-  .info("85.190.158.37", 27015, 2000)
-  .then(console.log)
-  .catch(console.log);
+info("9.9.9.9", 27015, timeout).then(console.log);
+players("9.9.9.9", 27015, timeout).then(console.log);
+rules("9.9.9.9", 27015, timeout).then(console.log);
 ```
 
-### `players(address, <port, [timeout]>) => Promise<[]>`
-
-Returns players from an A2S_PLAYER query.
-
-**Params:**
-
-* address - The IP address of the Source server.
-* port - The port of the Source server.
-* timeout - The timeout before an error is thrown. Defaults to 1000ms.
-
-**Example:**
+The methods are promise based, so the `await` keyword can be used aswell. You can also close the client at any time.
 
 ```javascript
-const query = require("source-query");
-query
-  .players("85.190.158.37", 27015, 2000)
-  .then(console.log)
-  .catch(console.log);
+close();
 ```
 
-### `rules(address, <port, [timeout]>) => Promise<[]>`
-
-Returns rules from an A2S_RULES query.
-
-**Params:**
-
-* address - The IP address of the Source server.
-* port - The port of the Source server.
-* timeout - The timeout before an error is thrown. Defaults to 1000ms.
-
-**Example:**
-
-```javascript
-const query = require("source-query");
-query
-  .rules("85.190.158.37", 27015, 2000)
-  .then(console.log)
-  .catch(console.log);
-```
-
-### `destroy() => void`
-
-Closes the Dgram client in order to shutdown the program gracefully.
-
-**Params:** None
-
-**Example:**
-
-```javascript
-const query = require("source-query");
-query
-  .info("85.190.158.37", 27015)
-  .then(console.log)
-  .catch(console.log)
-  .then(query.close);
-```
+For more information about each query request, as well as general source server information, see [index.d.ts](index.d.ts).
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
