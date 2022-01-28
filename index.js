@@ -28,19 +28,13 @@ const challenge = async (remote, format, payload, timeout) => {
   const response = await send(request, remote, timeout);
 
   if (bp.unpack("<s", response, 4)[0] === "A") {
-    const code = bp.unpack("<i", response, 5)[0];
-    request = bp.pack("<isi", [-1, payload[1], code]);
-    return await send(request, remote, timeout);
+    payload[payload.length - 1] = bp.unpack("<I", response, 5)[0];
+    return await send(bp.pack(format, payload), remote, timeout);
   } else return response;
 };
 
 module.exports.info = async (address, port, timeout = 1000) => {
-  const query = await challenge(
-    { address, port },
-    "<isSi",
-    [-1, "T", "Source Engine Query", -1],
-    timeout
-  );
+  const query = await challenge({ address, port }, "<isSI", [-1, "T", "Source Engine Query", -1], timeout);
 
   const format = `<
     B(protocol)
@@ -97,12 +91,7 @@ module.exports.info = async (address, port, timeout = 1000) => {
 };
 
 module.exports.players = async (address, port, timeout = 1000) => {
-  const response = await challenge(
-    { address, port },
-    "<isi",
-    [-1, "U", -1],
-    timeout
-  );
+  const response = await challenge({ address, port }, "<isI", [-1, "U", -1], timeout);
 
   const count = bp.unpack("<B", response, 5)[0];
   let offset = 6;
@@ -121,12 +110,7 @@ module.exports.players = async (address, port, timeout = 1000) => {
 };
 
 module.exports.rules = async (address, port, timeout = 1000) => {
-  const response = await challenge(
-    { address, port },
-    "<isi",
-    [-1, "V", -1],
-    timeout
-  );
+  const response = await challenge({ address, port }, "<isI", [-1, "V", -1], timeout);
 
   const count = bp.unpack("<h", response, 5)[0];
   let offset = 7;
