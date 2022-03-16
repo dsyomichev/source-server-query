@@ -4,26 +4,32 @@ A library for querying Source servers using the [Source Query Protocol](https://
 
 ## Installing
 
-You can add this module by running:
+You can add this package to your own project using npm.
 
 ```
-npm i source-server-query
+$ npm install source-server-query
 ```
 
-and then use it:
+Then load it into your own project. This project includes type declarations for Typescript.
 
-```javascript
+```typescript
+import { info, players, rules, close } from "source-server-query";
+
+/* OR */
+
 const { info, players, rules, close } = require("source-server-query");
 ```
 
 ## Usage
 
-Each method: `info`, `players`, `rules`, uses the same arguments of an address and port. The port is the UDP query port, not the game port.
+Each method, `info`, `players`, `rules`, uses the same arguments in the form of an address and port. The port is the UDP query port, not the game port. An optional timeout can be provided as well.
 
 ```javascript
-info("9.9.9.9", 27015, timeout).then(console.log);
-players("9.9.9.9", 27015, timeout).then(console.log);
-rules("9.9.9.9", 27015, timeout).then(console.log);
+info("0.0.0.0", 27015, timeout).then(console.log);
+
+players("0.0.0.0", 27015, timeout).then(console.log);
+
+rules("0.0.0.0", 27015, timeout).then(console.log);
 ```
 
 The methods are promise based, so the `await` keyword can be used aswell. You can also close the client at any time.

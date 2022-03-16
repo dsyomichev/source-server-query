@@ -1,0 +1,5 @@
+{
+  "root": true,
+  "plugins": ["prettier"],
+  "extends": ["airbnb-base", "prettier", "plugin:prettier/recommended"]
+}

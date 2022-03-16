@@ -1,4 +1,4 @@
-declare module "source-server-query" {
+declare module 'source-server-query' {
   /**
    * The response received with an AS2_INFO query. Uses descriptions for data from https://developer.valvesoftware.com/wiki/Server_queries.
    * This also contains more information about each item.
@@ -19,19 +19,12 @@ declare module "source-server-query" {
     vac: number /* Specifies whether the server uses VAC. */;
     version: string /* Version of the game installed on the server. */;
     port?: number /* The server's game port number. */;
-    steamid?: [number, number, true] /* Server's SteamID. */; // See below about int64 in JS.
+    steamid?: bigint /* Server's SteamID. */; // See below about int64 in JS.
     tvport?: number /* Spectator port number for SourceTV. */;
     tvname?: number /* Name of the spectator server for SourceTV. */;
     keywords?: string[] /* Tags that describe the game according to the server (for future use.) */;
-    gameid?: [number, number, true] /* The server's 64-bit GameID. */;
+    gameid?: bigint /* The server's 64-bit GameID. */;
   };
-
-  /**
-   * JavaScript 64 Bit Integers:
-   * Since the number precision is not high enough to store 64 bit numbers, it is provided in the format used by most number libraries including Long.js
-   * https://github.com/dcodeIO/Long.js/, see https://www.w3schools.com/js/js_numbers.asp for more info.
-   * This comes from the jspack library. https://github.com/birchroad/node-jspack
-   */
 
   /**
    * Query various server configuration information.
@@ -40,11 +33,7 @@ declare module "source-server-query" {
    * @param port - The UDP query port of the server. NOT the game port.
    * @param timeout - Timeout for the request in MS.
    */
-  export function info(
-    address: string,
-    port: number,
-    timeout: number = 1000
-  ): Promise<InfoResponse>;
+  export function info(address: string, port: number, timeout: number = 1000): Promise<InfoResponse>;
 
   /*
    * The response recevied from an A2S_PLAYER query.
@@ -63,11 +52,7 @@ declare module "source-server-query" {
    * @param port - The UDP query port of the server. NOT the game port.
    * @param timeout - Timeout for the request in MS.
    */
-  export function players(
-    address: string,
-    port: number,
-    timeout: number = 1000
-  ): Promise<PlayersResponse>;
+  export function players(address: string, port: number, timeout: number = 1000): Promise<PlayersResponse>;
 
   /*
    * The response recevied from an A2S_RULES query. Currently only supports single packet responses.
@@ -84,11 +69,7 @@ declare module "source-server-query" {
    * @param port - The UDP query port of the server. NOT the game port.
    * @param timeout - Timeout for the request in MS.
    */
-  export function rules(
-    address: string,
-    port: number,
-    timeout: number = 1000
-  ): Promise<RulesResponse>;
+  export function rules(address: string, port: number, timeout: number = 1000): Promise<RulesResponse>;
 
   export function close(): void;
 }

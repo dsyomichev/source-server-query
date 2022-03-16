@@ -1,24 +1,35 @@
 {
   "name": "source-server-query",
-  "version": "2.0.6",
+  "version": "2.1.2",
   "description": "Query Source game servers using the Source Query Protocol.",
+  "license": "MIT",
   "main": "index.js",
   "types": "index.d.ts",
+  "homepage": "https://github.com/dsyomichev/source-server-query",
+  "bugs": "https://github.com/dsyomichev/source-server-query/issuess",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dsyomichev/source-server-query.git"
+  },
+  "author": {
+    "name": "Daniel Syomichev",
+    "email": "dsyomichev@gmail.com",
+    "url": "https://github.com/dsyomichev"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "devDependencies": {
+    "eslint": "^8.10.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-prettier": "^4.0.0"
+  },
   "keywords": [
     "steam",
     "source",
     "query"
-  ],
-  "author": {
-    "name": "Daniel Syomichev",
-    "email": "dsyomichev@gmail.com"
-  },
-  "homepage": "git@github.com:dsyomichev/source-server-query",
-  "bugs": "git@github.com:dsyomichev/source-server-query/issuess",
-  "repository": "git@github.com:dsyomichev/source-server-query.git",
-  "license": "MIT",
-  "dependencies": {
-    "bufferpack": "0.0.6",
-    "jspack": "0.0.4"
-  }
+  ]
 }

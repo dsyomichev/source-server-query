@@ -1,108 +1,178 @@
-const bp = require("bufferpack");
-const jsp = require("jspack").jspack;
-
-const client = require("dgram").createSocket("udp4");
+/* eslint-disable no-bitwise */
+const client = require('dgram').createSocket('udp4');
 
 const send = (request, remote, timeout) => {
   return new Promise((resolve, reject) => {
+    let onResponse;
     const onTimeout = setTimeout(() => {
-      client.removeListener("message", onResponse);
-      return reject(new Error("Request timeout out."));
+      client.removeListener('message', onResponse);
+      reject(new Error(`Request Timeout`));
     }, timeout);
 
-    const onResponse = (response, rinfo) => {
-      if (rinfo.address != rinfo.address || rinfo.port != rinfo.port) return;
+    onResponse = (response, rinfo) => {
+      if (rinfo.address !== remote.address || remote.port !== rinfo.port) return;
 
-      client.removeListener("message", onResponse);
+      client.removeListener('message', onResponse);
       clearTimeout(onTimeout);
-      return resolve(response);
+      resolve(response);
     };
 
-    client.on("message", onResponse);
+    client.on('message', onResponse);
     client.send(request, remote.port, remote.address);
   });
 };
 
-const challenge = async (remote, format, payload, timeout) => {
-  let request = bp.pack(format, payload);
-  const response = await send(request, remote, timeout);
+const pack = (header, payload, challenge) => {
+  const preamble = Buffer.alloc(4);
+  preamble.writeInt32LE(-1, 0);
 
-  if (bp.unpack("<s", response, 4)[0] === "A") {
-    payload[payload.length - 1] = bp.unpack("<I", response, 5)[0];
-    return await send(bp.pack(format, payload), remote, timeout);
-  } else return response;
+  const request = Buffer.from(header);
+  const data = payload ? Buffer.concat([Buffer.from(payload), Buffer.alloc(1)]) : Buffer.alloc(0);
+  let prologue = Buffer.alloc(0);
+  if (challenge) {
+    prologue = Buffer.alloc(4);
+    prologue.writeInt32LE(challenge);
+  }
+
+  return Buffer.concat([preamble, request, data, prologue, preamble]);
+};
+
+const challenge = async (remote, header, payload, timeout) => {
+  const request = pack(header, payload);
+
+  const response = await send(request, remote, timeout);
+  const type = response.slice(4, 5).toString();
+
+  if (type === 'A') {
+    const challenger = response.readInt32LE(5);
+    const final = pack(header, payload, challenger);
+
+    return send(final, remote, timeout);
+  }
+
+  return response;
 };
 
 module.exports.info = async (address, port, timeout = 1000) => {
-  const query = await challenge({ address, port }, "<isSI", [-1, "T", "Source Engine Query", -1], timeout);
+  const query = await challenge({ address, port }, 'T', 'Source Engine Query', timeout);
 
-  const format = `<
-    B(protocol)
-    S(name)
-    S(map)
-    S(folder)
-    S(game)
-    h(id)
-    B(players)
-    B(maxplayers)
-    B(bots)
-    c(servertype)
-    c(environment)
-    B(visibility)
-    B(vac)
-    S(version)`;
+  const result = {};
+  let offset = 4;
 
-  const info = bp.unpack(format, query.slice(4));
-  const extra = query.slice(bp.calcLength(format, Object.values(info)) + 4);
+  result.header = query.slice(offset, offset + 1);
+  offset += 1;
+  result.header = result.header.toString();
 
-  if (extra.length < 1) return data;
+  result.protocol = query.readInt8(offset);
+  offset += 1;
 
-  let offset = 1;
-  const edf = bp.unpack("<B", extra)[0];
+  result.name = query.slice(offset, query.indexOf(0, offset));
+  offset += result.name.length + 1;
+  result.name = result.name.toString();
+
+  result.map = query.slice(offset, query.indexOf(0, offset));
+  offset += result.map.length + 1;
+  result.map = result.map.toString();
+
+  result.folder = query.slice(offset, query.indexOf(0, offset));
+  offset += result.folder.length + 1;
+  result.folder = result.folder.toString();
+
+  result.game = query.slice(offset, query.indexOf(0, offset));
+  offset += result.game.length + 1;
+  result.game = result.game.toString();
+
+  result.id = query.readInt16LE(offset);
+  offset += 2;
+
+  result.players = query.readInt8(offset);
+  offset += 1;
+
+  result.max_players = query.readInt8(offset);
+  offset += 1;
+
+  result.bots = query.readInt8(offset);
+  offset += 1;
+
+  result.server_type = query.slice(offset, offset + 1).toString();
+  offset += 1;
+
+  result.environment = query.slice(offset, offset + 1).toString();
+  offset += 1;
+
+  result.visibility = query.readInt8(offset);
+  offset += 1;
+
+  result.vac = query.readInt8(offset);
+  offset += 1;
+
+  result.version = query.slice(offset, query.indexOf(0, offset)).toString();
+  offset += result.version.length + 1;
+
+  const extra = query.slice(offset);
+
+  offset = 0;
+  if (extra.length < 1) return result;
+
+  const edf = extra.readInt8(offset);
+  offset += 1;
 
   if (edf & 0x80) {
-    info.port = bp.unpack("<h", extra, offset)[0];
+    result.port = extra.readInt16LE(offset);
     offset += 2;
   }
 
   if (edf & 0x10) {
-    info.steamid = jsp.Unpack("<Q", extra, offset)[0];
+    result.steamid = extra.readBigUInt64LE(offset);
     offset += 8;
   }
 
   if (edf & 0x40) {
-    const tvinfo = bp.unpack("<hS", extra, offset);
-    info.tvport = tvinfo[0];
-    info.tvname = tvinfo[1];
-    offset += bp.calcLength("<hS", tvinfo);
+    result.tvport = extra.readInt16LE(offset);
+    offset += 2;
+
+    result.tvname = extra.slice(offset, extra.indexOf(0, offset)).toString();
+    offset += result.tvname.length + 1;
   }
 
   if (edf & 0x20) {
-    info.keywords = bp.unpack("<S", extra, offset)[0].split(",");
-    offset += bp.calcLength("<S", info.keywords);
+    const keywords = extra.slice(offset, extra.indexOf(0, offset)).toString();
+    offset += keywords.length + 1;
+
+    result.keywords = keywords.split(',');
   }
 
   if (edf & 0x01) {
-    info.gameid = jsp.Unpack("<Q", extra, offset)[0];
+    result.gameid = extra.readBigUInt64LE(offset);
     offset += 4;
   }
 
-  return info;
+  return result;
 };
 
 module.exports.players = async (address, port, timeout = 1000) => {
-  const response = await challenge({ address, port }, "<isI", [-1, "U", -1], timeout);
+  const query = await challenge({ address, port }, 'U', undefined, timeout);
 
-  const count = bp.unpack("<B", response, 5)[0];
-  let offset = 6;
+  let offset = 5;
+  const count = query.readInt8(offset);
 
   const players = [];
-  const format = "<b(index)S(name)i(score)f(duration)";
+  for (let i = 0; i < count; i += 1) {
+    const player = {};
 
-  for (let i = 0; i < count; i++) {
-    const player = bp.unpack(format, response, offset);
+    player.index = query.readInt8(offset);
+    offset += 1;
 
-    offset += bp.calcLength(format, Object.values(player));
+    player.name = query.slice(offset, query.indexOf(0, offset));
+    offset += player.name.length + 1;
+    player.name = player.name.toString();
+
+    player.score = query.readInt32LE(offset);
+    offset += 4;
+
+    player.duration = query.readFloatLE(offset);
+    offset += 4;
+
     players.push(player);
   }
 
@@ -110,18 +180,30 @@ module.exports.players = async (address, port, timeout = 1000) => {
 };
 
 module.exports.rules = async (address, port, timeout = 1000) => {
-  const response = await challenge({ address, port }, "<isI", [-1, "V", -1], timeout);
+  const query = await challenge({ address, port }, 'V', undefined, timeout);
 
-  const count = bp.unpack("<h", response, 5)[0];
-  let offset = 7;
+  let offset = 0;
+  const header = query.readInt32LE(offset);
+  if (header === -2) throw new Error('Unsupported Response');
+  offset += 4;
+
+  offset += 1;
+
+  const count = query.readInt16LE(offset);
+  offset += 2;
 
   const rules = [];
-  const format = "<S(name)S(value)";
+  for (let i = 0; i < count; i += 1) {
+    const rule = {};
 
-  for (let i = 0; i < count; i++) {
-    const rule = bp.unpack(format, response, offset);
+    rule.name = query.slice(offset, query.indexOf(0, offset));
+    offset += rule.name.length + 1;
+    rule.name = rule.name.toString();
 
-    offset += bp.calcLength(format, Object.values(rule));
+    rule.value = query.slice(offset, query.indexOf(0, offset));
+    offset += rule.value.length + 1;
+    rule.value = rule.value.toString();
+
     rules.push(rule);
   }
 
