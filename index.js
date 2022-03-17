@@ -155,6 +155,7 @@ module.exports.players = async (address, port, timeout = 1000) => {
 
   let offset = 5;
   const count = query.readInt8(offset);
+  offset += 1;
 
   const players = [];
   for (let i = 0; i < count; i += 1) {
