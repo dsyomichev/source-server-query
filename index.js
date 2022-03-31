@@ -54,7 +54,7 @@ const challenge = async (remote, header, payload, timeout) => {
 };
 
 module.exports.info = async (address, port, timeout = 1000) => {
-  const query = await challenge({ address, port }, 'T', 'Source Engine Query', timeout);
+  const query = await challenge({ address, port: parseInt(port, 10) }, 'T', 'Source Engine Query', timeout);
 
   const result = {};
   let offset = 4;
@@ -106,8 +106,9 @@ module.exports.info = async (address, port, timeout = 1000) => {
   result.vac = query.readInt8(offset);
   offset += 1;
 
-  result.version = query.slice(offset, query.indexOf(0, offset)).toString();
+  result.version = query.slice(offset, query.indexOf(0, offset));
   offset += result.version.length + 1;
+  result.version = result.version.toString();
 
   const extra = query.slice(offset);
 
@@ -131,33 +132,34 @@ module.exports.info = async (address, port, timeout = 1000) => {
     result.tvport = extra.readInt16LE(offset);
     offset += 2;
 
-    result.tvname = extra.slice(offset, extra.indexOf(0, offset)).toString();
+    result.tvname = extra.slice(offset, extra.indexOf(0, offset));
     offset += result.tvname.length + 1;
+    result.tvname = result.tvname.toString();
   }
 
   if (edf & 0x20) {
-    const keywords = extra.slice(offset, extra.indexOf(0, offset)).toString();
+    const keywords = extra.slice(offset, extra.indexOf(0, offset));
     offset += keywords.length + 1;
 
-    result.keywords = keywords.split(',');
+    result.keywords = keywords.toString();
   }
 
   if (edf & 0x01) {
     result.gameid = extra.readBigUInt64LE(offset);
-    offset += 4;
+    offset += 8;
   }
 
   return result;
 };
 
 module.exports.players = async (address, port, timeout = 1000) => {
-  const query = await challenge({ address, port }, 'U', undefined, timeout);
+  const query = await challenge({ address, port: parseInt(port, 10) }, 'U', undefined, timeout);
 
   let offset = 5;
   const count = query.readInt8(offset);
   offset += 1;
 
-  const players = [];
+  const result = [];
   for (let i = 0; i < count; i += 1) {
     const player = {};
 
@@ -174,14 +176,14 @@ module.exports.players = async (address, port, timeout = 1000) => {
     player.duration = query.readFloatLE(offset);
     offset += 4;
 
-    players.push(player);
+    result.push(player);
   }
 
-  return players;
+  return result;
 };
 
 module.exports.rules = async (address, port, timeout = 1000) => {
-  const query = await challenge({ address, port }, 'V', undefined, timeout);
+  const query = await challenge({ address, port: parseInt(port, 10) }, 'V', undefined, timeout);
 
   let offset = 0;
   const header = query.readInt32LE(offset);
@@ -193,7 +195,7 @@ module.exports.rules = async (address, port, timeout = 1000) => {
   const count = query.readInt16LE(offset);
   offset += 2;
 
-  const rules = [];
+  const result = [];
   for (let i = 0; i < count; i += 1) {
     const rule = {};
 
@@ -205,10 +207,10 @@ module.exports.rules = async (address, port, timeout = 1000) => {
     offset += rule.value.length + 1;
     rule.value = rule.value.toString();
 
-    rules.push(rule);
+    result.push(rule);
   }
 
-  return rules;
+  return result;
 };
 
 module.exports.close = () => client.close();

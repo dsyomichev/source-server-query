@@ -13,11 +13,11 @@ $ npm install source-server-query
 Then load it into your own project. This project includes type declarations for Typescript.
 
 ```typescript
-import { info, players, rules, close } from "source-server-query";
+import query from 'source-server-query';
 
 /* OR */
 
-const { info, players, rules, close } = require("source-server-query");
+const query = require('source-server-query');
 ```
 
 ## Usage
@@ -25,17 +25,17 @@ const { info, players, rules, close } = require("source-server-query");
 Each method, `info`, `players`, `rules`, uses the same arguments in the form of an address and port. The port is the UDP query port, not the game port. An optional timeout can be provided as well.
 
 ```javascript
-info("0.0.0.0", 27015, timeout).then(console.log);
+query.info('127.0.0.1', 27015, 1000).then(console.log); // A2S_INFO
 
-players("0.0.0.0", 27015, timeout).then(console.log);
+query.players('127.0.0.1', 27015, 1000).then(console.log); // A2S_PLAYER
 
-rules("0.0.0.0", 27015, timeout).then(console.log);
+query.rules('127.0.0.1', 27015, 1000).then(console.log); // A2S_RULES
 ```
 
 The methods are promise based, so the `await` keyword can be used aswell. You can also close the client at any time.
 
 ```javascript
-close();
+query.close();
 ```
 
 For more information about each query request, as well as general source server information, see [index.d.ts](index.d.ts).

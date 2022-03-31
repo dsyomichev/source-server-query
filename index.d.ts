@@ -22,7 +22,7 @@ declare module 'source-server-query' {
     steamid?: bigint /* Server's SteamID. */; // See below about int64 in JS.
     tvport?: number /* Spectator port number for SourceTV. */;
     tvname?: number /* Name of the spectator server for SourceTV. */;
-    keywords?: string[] /* Tags that describe the game according to the server (for future use.) */;
+    keywords?: string /* Tags that describe the game according to the server (for future use.) */;
     gameid?: bigint /* The server's 64-bit GameID. */;
   };
 
