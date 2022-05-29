@@ -32,12 +32,6 @@ query.players('127.0.0.1', 27015, 1000).then(console.log); // A2S_PLAYER
 query.rules('127.0.0.1', 27015, 1000).then(console.log); // A2S_RULES
 ```
 
-The methods are promise based, so the `await` keyword can be used aswell. You can also close the client at any time.
-
-```javascript
-query.close();
-```
-
 For more information about each query request, as well as general source server information, see [index.d.ts](index.d.ts).
 
 ## License
