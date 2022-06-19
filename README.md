@@ -20,6 +20,20 @@ import query from 'source-server-query';
 const query = require('source-server-query');
 ```
 
+Or create the object using a constructor.
+
+```typescript
+import { SourceQuerySocket } from 'source-server-query';
+
+const query: SourceQuerySocket = new SourceQuerySocket();
+
+/* OR */
+
+const { SourceQuerySocket } = require('source-server-query');
+
+const query = new SourceQuerySocket();
+```
+
 ## Usage
 
 Each method, `info`, `players`, `rules`, uses the same arguments in the form of an address and port. The port is the UDP query port, not the game port. An optional timeout can be provided as well.
@@ -32,7 +46,14 @@ query.players('127.0.0.1', 27015, 1000).then(console.log); // A2S_PLAYER
 query.rules('127.0.0.1', 27015, 1000).then(console.log); // A2S_RULES
 ```
 
-For more information about each query request, as well as general source server information, see [index.d.ts](index.d.ts).
+The socket binding options can be configured through properties on the object, which include `port`, `address`, `exclusive`, and `fd`.
+
+```javascript
+socket.port = 8080;
+socket.address = '127.0.0.1';
+```
+
+The socket opens and closes automatically, and whenever the socket is opened, the configuration is pushed to the socket. To force an update, close the current socket with the `close()` method. It will reopen with the updated values when the next request is sent.
 
 ## License
 

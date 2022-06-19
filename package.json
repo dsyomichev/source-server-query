@@ -1,10 +1,13 @@
 {
   "name": "source-server-query",
-  "version": "3.0.0",
+  "version": "3.0.2",
   "description": "Query Source game servers using the Source Query Protocol.",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "scripts": {
+    "prepare": "npx tsc"
+  },
   "homepage": "https://github.com/dsyomichev/source-server-query",
   "bugs": "https://github.com/dsyomichev/source-server-query/issuess",
   "repository": {
