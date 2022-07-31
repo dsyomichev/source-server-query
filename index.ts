@@ -1,7 +1,7 @@
 import dgram, { BindOptions, Socket } from 'dgram';
 import { AddressInfo } from 'net';
 
-export class SourceQuerySocket {
+class SourceQuerySocket {
   public port?: number;
 
   public address?: string;
@@ -62,10 +62,10 @@ export class SourceQuerySocket {
     });
   }
 
-  private close(): void {
+  private close = (): void => {
     this.socket?.close();
     this.socket = undefined;
-  }
+  };
 
   private validate(einfo: AddressInfo, rinfo: AddressInfo, request: Buffer, response: Buffer): boolean {
     if (rinfo.port !== einfo.port) return false;
@@ -141,7 +141,7 @@ export class SourceQuerySocket {
     return challenge;
   }
 
-  public async info(address: string, port: number | string, timeout: number = 1000) {
+  public info = async (address: string, port: number | string, timeout: number = 1000) => {
     const query: Buffer = await this.solicit(
       { address, port: parseInt(port as string, 10), family: '' },
       'T',
@@ -243,9 +243,9 @@ export class SourceQuerySocket {
     }
 
     return result;
-  }
+  };
 
-  public async players(address: string, port: number | string, timeout: number = 1000) {
+  public players = async (address: string, port: number | string, timeout: number = 1000) => {
     const query: Buffer = await this.solicit(
       { address, port: parseInt(port as string, 10), family: '' },
       'U',
@@ -278,9 +278,9 @@ export class SourceQuerySocket {
     }
 
     return result;
-  }
+  };
 
-  public async rules(address: string, port: string | number, timeout = 1000) {
+  public rules = async (address: string, port: string | number, timeout = 1000) => {
     const query: Buffer = await this.solicit(
       { address, port: parseInt(port as string, 10), family: '' },
       'V',
@@ -314,7 +314,8 @@ export class SourceQuerySocket {
     }
 
     return result;
-  }
+  };
 }
 
-export default new SourceQuerySocket();
+module.exports = new SourceQuerySocket();
+module.exports.SourceQuerySocket = SourceQuerySocket;

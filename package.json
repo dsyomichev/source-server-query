@@ -1,6 +1,6 @@
 {
   "name": "source-server-query",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "Query Source game servers using the Source Query Protocol.",
   "license": "MIT",
   "main": "dist/index.js",
