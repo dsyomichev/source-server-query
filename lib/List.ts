@@ -1,23 +1,27 @@
-export type Node<T> = {
+export interface Node<T> {
   next?: Node<T>;
   value: T;
-};
+}
 
 export default class List<T> implements Set<T> {
+  [Symbol.toStringTag] = 'List';
+
   protected head?: Node<T>;
 
   protected tail?: Node<T>;
 
-  protected _size: number = 0;
+  #size = 0;
 
-  get size(): number {
-    return this._size;
+  get size() {
+    return this.#size;
   }
 
-  [Symbol.toStringTag]: string = 'List';
+  protected set size(value) {
+    this.#size = value;
+  }
 
-  *[Symbol.iterator](): IterableIterator<T> {
-    let node: Node<T> | undefined = this.head;
+  *[Symbol.iterator]() {
+    let node = this.head;
 
     while (node !== undefined) {
       yield node.value;
@@ -26,8 +30,8 @@ export default class List<T> implements Set<T> {
     }
   }
 
-  *entries(): IterableIterator<[T, T]> {
-    let node: Node<T> | undefined = this.head;
+  *entries(): Generator<[T, T], void> {
+    let node = this.head;
 
     while (node !== undefined) {
       yield [node.value, node.value];
@@ -36,12 +40,12 @@ export default class List<T> implements Set<T> {
     }
   }
 
-  keys: () => IterableIterator<T> = this[Symbol.iterator];
+  keys = this[Symbol.iterator];
 
-  values: () => IterableIterator<T> = this[Symbol.iterator];
+  values = this[Symbol.iterator];
 
-  forEach(callback: (value: T, mirror: T, list: List<T>) => void, scope?: any): void {
-    let node: Node<T> | undefined = this.head;
+  forEach(callback: (value: T, mirror: T, list: List<T>) => void, scope?: unknown) {
+    let node = this.head;
 
     while (node !== undefined) {
       callback.apply(scope, [node.value, node.value, this]);
@@ -50,29 +54,29 @@ export default class List<T> implements Set<T> {
     }
   }
 
-  add(value: T): this {
-    const node: Node<T> = { value, next: this.head };
+  add(value: T) {
+    const node = { value, next: this.head };
 
     this.head = node;
     if (this.head.next === undefined) this.tail = this.head;
 
-    this._size += 1;
+    this.size += 1;
 
     return this;
   }
 
-  delete(value: T): boolean {
-    let previous: Node<T> | undefined = undefined;
-    let node: Node<T> | undefined = this.head;
+  delete(value: T) {
+    let previous;
+    let node = this.head;
 
     while (node !== undefined) {
-      if (Object.is(node.value, value) === true) {
+      if (Object.is(node.value, value)) {
         if (previous === undefined) this.head = node.next;
         else previous.next = node.next;
 
         if (node.next === undefined) this.tail = previous;
 
-        this._size -= 1;
+        this.size -= 1;
 
         return true;
       }
@@ -84,16 +88,17 @@ export default class List<T> implements Set<T> {
     return false;
   }
 
-  clear(): void {
-    this.head = this.tail = undefined;
-    this._size = 0;
+  clear() {
+    this.head = undefined;
+    this.tail = undefined;
+    this.size = 0;
   }
 
-  has(value: T): boolean {
-    let node: Node<T> | undefined = this.head;
+  has(value: T) {
+    let node = this.head;
 
     while (node !== undefined) {
-      if (Object.is(node.value, value) === true) return true;
+      if (Object.is(node.value, value)) return true;
 
       node = node.next;
     }

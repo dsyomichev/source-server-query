@@ -1,26 +1,31 @@
+/* eslint-disable @typescript-eslint/dot-notation */
+
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { describe, expect, test } from '@jest/globals';
 import List, { Node } from '../lib/List';
 
 const $expect = {
   empty: (list: List<unknown>): void => {
     expect(list.size).toBe(0);
-    expect(list['head']).toBeUndefined;
-    expect(list['tail']).toBeUndefined;
+    expect(list['head']).toBeUndefined();
+    expect(list['tail']).toBeUndefined();
   },
 
   chained: (head: Node<unknown>, tail: Node<unknown>): void => {
-    let node: Node<unknown> = head;
+    let node = head;
     while (node.next !== undefined) node = node.next;
 
     expect(node).toStrictEqual(tail);
   },
 
   ordered: (list: List<unknown>, expected: unknown[]) => {
-    let node: Node<unknown> | undefined = list['head'];
-    let i: number = 0;
+    let node = list['head'];
+    let i = 0;
 
     while (node !== undefined) {
-      expect(node.value).toBe(expected[i++]);
+      expect(node.value).toBe(expected[i]);
+
+      i += 1;
       node = node.next;
     }
 
@@ -29,8 +34,11 @@ const $expect = {
 };
 
 describe('class List', () => {
-  let list: List<any> = new List();
-  beforeEach(() => (list = new List()));
+  let list = new List<number>();
+
+  beforeEach(() => {
+    list = new List();
+  });
 
   describe('new List()', () => {
     test('list is initialized', () => {
@@ -44,7 +52,7 @@ describe('class List', () => {
 
   describe('add()', () => {
     test('size is incremented', () => {
-      const iterations: number = 10;
+      const iterations = 10 ** 4;
 
       for (let i = 0; i < iterations; i += 1) {
         list.add(i);
@@ -54,7 +62,7 @@ describe('class List', () => {
     });
 
     test('head and tail are managed', () => {
-      const iterations: number = 10000;
+      const iterations = 10 ** 4;
 
       for (let i = 0; i < iterations; i += 1) {
         list.add(i);
@@ -65,20 +73,21 @@ describe('class List', () => {
     });
 
     test('list is linked', () => {
-      const iterations: number = 100;
+      const iterations = 10 ** 3;
 
       for (let i = 0; i < iterations; i += 1) {
         list.add(i);
 
-        $expect.chained(list['head'] as Node<number>, list['tail'] as Node<number>);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        $expect.chained(list['head']!, list['tail']!);
       }
     });
 
     test('order is maintained', () => {
-      const iterations: number = 100;
+      const iterations = 10 ** 2;
 
       for (let i = 0; i < iterations; i += 1) {
-        const expected: number[] = [...Array(i + 1).keys()].reverse();
+        const expected = [...Array(i + 1).keys()].reverse();
         list.add(i);
 
         $expect.ordered(list, expected);
@@ -88,7 +97,7 @@ describe('class List', () => {
 
   describe('clear()', () => {
     test('list is empty', () => {
-      const iterations: number = 10;
+      const iterations = 10 ** 2;
 
       for (let i = 0; i < iterations; i += 1) {
         for (let j = 0; j < iterations; j += 1) list.add(j);
@@ -102,15 +111,22 @@ describe('class List', () => {
 
   describe('delete()', () => {
     test('value is not present', () => {
-      const iterations: number = 10;
+      const iterations = 10 ** 2;
 
       for (let i = 0; i < iterations; i += 1) list.add(i);
 
       expect(list.delete(iterations)).toBe(false);
     });
 
+    describe('final element is removed', () => {
+      list.add(0);
+
+      expect(list.delete(0)).toBe(true);
+      $expect.empty(list);
+    });
+
     test('size is decremented', () => {
-      const iterations: number = 10;
+      const iterations = 10 ** 2;
 
       for (let i = 0; i < iterations; i += 1) list.add(i);
 
@@ -121,16 +137,9 @@ describe('class List', () => {
       }
     });
 
-    describe('value = (head && tail)', () => {
-      list.add(0);
-      list.delete(0);
-
-      $expect.empty(list);
-    });
-
     describe('value = (head)', () => {
       test('head and tail are managed', () => {
-        const iterations: number = 10;
+        const iterations = 10 ** 2;
 
         for (let i = 0; i < iterations; i += 1) list.add(i);
 
@@ -143,26 +152,27 @@ describe('class List', () => {
       });
 
       test('list is linked', () => {
-        const iterations: number = 10;
+        const iterations = 10 ** 2;
 
         for (let i = 0; i < iterations; i += 1) list.add(i);
 
         for (let i = 0; i < iterations - 1; i += 1) {
           list.delete(i);
 
-          $expect.chained(list['head'] as Node<number>, list['tail'] as Node<number>);
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          $expect.chained(list['head']!, list['tail']!);
         }
       });
 
       test('order is maintained', () => {
-        const iterations: number = 10;
+        const iterations = 10 ** 2;
 
         for (let i = 0; i < iterations; i += 1) list.add(i);
 
         for (let i = 0; i < iterations - 1; i += 1) {
           list.delete(i);
 
-          const expected: number[] = [...Array(iterations).keys()].reverse().slice(0, -1 * (i + 1));
+          const expected = [...Array(iterations).keys()].reverse().slice(0, -1 * (i + 1));
 
           $expect.ordered(list, expected);
         }
@@ -171,7 +181,7 @@ describe('class List', () => {
 
     describe('value = (tail)', () => {
       test('head and tail are managed', () => {
-        const iterations: number = 10;
+        const iterations = 10 ** 2;
 
         for (let i = 0; i < iterations; i += 1) list.add(i);
 
@@ -184,26 +194,27 @@ describe('class List', () => {
       });
 
       test('list is linked', () => {
-        const iterations: number = 10;
+        const iterations = 10 ** 2;
 
         for (let i = 0; i < iterations; i += 1) list.add(i);
 
         for (let i = iterations - 1; i > 1; i -= 1) {
           list.delete(i);
 
-          $expect.chained(list['head'] as Node<number>, list['tail'] as Node<number>);
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          $expect.chained(list['head']!, list['tail']!);
         }
       });
 
       test('order is maintained', () => {
-        const iterations: number = 10;
+        const iterations = 10 ** 2;
 
         for (let i = 0; i < iterations; i += 1) list.add(i);
 
         for (let i = iterations - 1; i > 1; i -= 1) {
           list.delete(i);
 
-          const expected: number[] = [...Array(iterations).keys()].reverse().slice(iterations - i);
+          const expected = [...Array(iterations).keys()].reverse().slice(iterations - i);
 
           $expect.ordered(list, expected);
         }
@@ -212,7 +223,7 @@ describe('class List', () => {
 
     describe('value = (!head && !tail)', () => {
       test('head and tail are managed', () => {
-        const iterations: number = 10;
+        const iterations = 10 ** 2;
 
         for (let i = 0; i < iterations; i += 1) list.add(i);
 
@@ -225,19 +236,20 @@ describe('class List', () => {
       });
 
       test('list is linked', () => {
-        const iterations: number = 10;
+        const iterations = 10 ** 2;
 
         for (let i = 0; i < iterations; i += 1) list.add(i);
 
         for (let i = 1; i < iterations - 2; i += 1) {
           list.delete(i);
 
-          $expect.chained(list['head'] as Node<number>, list['tail'] as Node<number>);
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          $expect.chained(list['head']!, list['tail']!);
         }
       });
 
       test('order is maintained', () => {
-        const iterations: number = 10;
+        const iterations: number = 10 ** 2;
 
         for (let i = 0; i < iterations; i += 1) list.add(i);
 
@@ -255,7 +267,7 @@ describe('class List', () => {
 
   describe('has()', () => {
     test('value is present', () => {
-      const iterations: number = 10;
+      const iterations = 10 ** 2;
 
       for (let i = 0; i < iterations; i += 1) list.add(i);
 
@@ -263,7 +275,7 @@ describe('class List', () => {
     });
 
     test('value is not present', () => {
-      const iterations: number = 10;
+      const iterations = 10 ** 2;
 
       for (let i = 0; i < iterations; i += 1) list.add(i);
 
@@ -273,20 +285,21 @@ describe('class List', () => {
 
   describe('*[Symbol.iterator]()', () => {
     test('yields for each value', () => {
-      const iterations: number = 100;
+      const iterations = 10 ** 3;
 
-      for (let i = 0; i < iterations; i += 1) list.add(i);
+      for (let i = 0; i < iterations; i += 1) list.add(1);
 
-      let counter: number = 0;
+      let counter = 0;
 
-      for (let value of list) counter += 1;
+      // eslint-disable-next-line no-restricted-syntax
+      for (const value of list) counter += value;
 
       expect(counter).toBe(iterations);
     });
 
     test('order is maintained', () => {
-      const iterations: number = 100;
-      let expected: number[] = [];
+      const iterations = 10 ** 3;
+      const expected: number[] = [];
 
       for (let i = 0; i < iterations; i += 1) {
         const value = Math.floor(Math.random() * 10);
@@ -301,21 +314,22 @@ describe('class List', () => {
 
   describe('*entries()', () => {
     test('yields for each value', () => {
-      const iterations: number = 100;
+      const iterations = 10 ** 3;
 
-      for (let i = 0; i < iterations; i += 1) list.add(i);
+      for (let i = 0; i < iterations; i += 1) list.add(1);
 
-      let counter: number = 0;
+      let counter = 0;
 
-      for (let value of list.entries()) counter += 1;
+      // eslint-disable-next-line no-restricted-syntax
+      for (const value of list.entries()) counter += value[0];
 
       expect(counter).toBe(iterations);
     });
 
     test('order is maintained', () => {
-      const iterations: number = 100;
+      const iterations = 10 ** 3;
 
-      let expected: [number, number][] = [];
+      const expected: [number, number][] = [];
 
       for (let i = 0; i < iterations; i += 1) {
         const value = Math.floor(Math.random() * 10);
@@ -330,21 +344,23 @@ describe('class List', () => {
 
   describe('forEach()', () => {
     test('yields for each value', () => {
-      const iterations: number = 100;
+      const iterations = 10 ** 3;
 
-      for (let i = 0; i < iterations; i += 1) list.add(i);
+      for (let i = 0; i < iterations; i += 1) list.add(1);
 
-      let counter: number = 0;
+      let counter = 0;
 
-      list.forEach((value) => (counter += 1));
+      list.forEach((value) => {
+        counter += value;
+      });
 
       expect(counter).toBe(iterations);
     });
 
     test('order is maintained', () => {
-      const iterations: number = 100;
+      const iterations = 10 ** 3;
 
-      let expected: number[] = [];
+      const expected: number[] = [];
 
       for (let i = 0; i < iterations; i += 1) {
         const value = Math.floor(Math.random() * 10);
@@ -361,17 +377,15 @@ describe('class List', () => {
     });
 
     test('scope is modified', () => {
-      const iterations = 10;
+      const iterations = 10 ** 2;
 
       for (let i = 0; i < iterations; i += 1) list.add(1);
 
-      const accumulator: Record<string, number> = { value: 0 };
+      const accumulator = { value: 0 };
 
-      const callback = function (this: Record<string, number>, value: number) {
+      list.forEach(function callback(this: typeof accumulator, value) {
         this.value += value;
-      };
-
-      list.forEach(callback, accumulator);
+      }, accumulator);
 
       expect(accumulator.value).toBe(iterations);
     });
