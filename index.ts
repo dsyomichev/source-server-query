@@ -317,5 +317,6 @@ class SourceQuerySocket {
   };
 }
 
-module.exports = new SourceQuerySocket();
-module.exports.SourceQuerySocket = SourceQuerySocket;
+const export_ = new SourceQuerySocket() as SourceQuerySocket & { SourceQuerySocket: typeof SourceQuerySocket };
+export_.SourceQuerySocket = SourceQuerySocket;
+export = export_;
