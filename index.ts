@@ -118,7 +118,7 @@ class SourceQuerySocket {
       prologue.writeInt32LE(challenge);
     }
 
-    return Buffer.concat([preamble, request, data, prologue, preamble]);
+    return Buffer.concat([preamble, request, data, prologue]);
   }
 
   private async solicit(
