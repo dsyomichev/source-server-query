@@ -161,7 +161,7 @@ class SourceQuerySocket {
     offset += 1;
     result.header = result.header.toString();
 
-    result.protocol = query.readInt8(offset);
+    result.protocol = query.readUInt8(offset);
     offset += 1;
 
     result.name = query.slice(offset, query.indexOf(0, offset));
@@ -183,13 +183,13 @@ class SourceQuerySocket {
     result.id = query.readInt16LE(offset);
     offset += 2;
 
-    result.players = query.readInt8(offset);
+    result.players = query.readUInt8(offset);
     offset += 1;
 
-    result.max_players = query.readInt8(offset);
+    result.max_players = query.readUInt8(offset);
     offset += 1;
 
-    result.bots = query.readInt8(offset);
+    result.bots = query.readUInt8(offset);
     offset += 1;
 
     result.server_type = query.slice(offset, offset + 1).toString();
@@ -198,10 +198,10 @@ class SourceQuerySocket {
     result.environment = query.slice(offset, offset + 1).toString();
     offset += 1;
 
-    result.visibility = query.readInt8(offset);
+    result.visibility = query.readUInt8(offset);
     offset += 1;
 
-    result.vac = query.readInt8(offset);
+    result.vac = query.readUInt8(offset);
     offset += 1;
 
     result.version = query.slice(offset, query.indexOf(0, offset));
@@ -213,7 +213,7 @@ class SourceQuerySocket {
     offset = 0;
     if (extra.length < 1) return result;
 
-    const edf: number = extra.readInt8(offset);
+    const edf: number = extra.readUInt8(offset);
     offset += 1;
 
     if (edf & 0x80) {
@@ -258,14 +258,14 @@ class SourceQuerySocket {
     );
 
     let offset = 5;
-    const count: number = query.readInt8(offset);
+    const count: number = query.readUInt8(offset);
     offset += 1;
 
     const result: Record<string, string | number>[] = [];
     for (let i = 0; i < count; i += 1) {
       const player: Record<string, any> = {};
 
-      player.index = query.readInt8(offset);
+      player.index = query.readUInt8(offset);
       offset += 1;
 
       player.name = query.slice(offset, query.indexOf(0, offset));
