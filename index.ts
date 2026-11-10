@@ -18,6 +18,8 @@ class SourceQuerySocket {
 
   private socket?: Socket;
 
+  private active: number = 0;
+
   private static readonly A2S_INFO: Request = { header: 'T', payload: 'Source Engine Query' };
   private static readonly A2S_PLAYER: Request = { header: 'U', challenge: -1 };
   private static readonly A2S_RULES: Request = { header: 'V', challenge: -1 };
@@ -74,11 +76,6 @@ class SourceQuerySocket {
     });
   }
 
-  private close = (): void => {
-    this.socket?.close();
-    this.socket = undefined;
-  };
-
   private validate(einfo: AddressInfo, rinfo: AddressInfo, request: Buffer, response: Buffer): boolean {
     if (rinfo.port !== einfo.port) return false;
     if (rinfo.address !== einfo.address) return false;
@@ -104,7 +101,6 @@ class SourceQuerySocket {
 
         clearTimeout(timeout);
         this.socket?.removeListener('message', message);
-        if (this.socket?.listenerCount('message') === 0) this.close();
 
         return resolve(response);
       };
@@ -134,18 +130,30 @@ class SourceQuerySocket {
   }
 
   private async solicit(einfo: AddressInfo, request: Request, duration: number): Promise<Buffer> {
-    let challenge = request.challenge;
+    try {
+      this.active += 1;
 
-    for (let attempt = 0; attempt < SourceQuerySocket.MAX_ATTEMPTS; attempt += 1) {
-      const response = await this.send(einfo, this.pack(request.header, request.payload, challenge), duration);
+      let challenge = request.challenge;
 
-      if (response.length < 9 || response[4] !== 0x41) return response;
+      for (let attempt = 0; attempt < SourceQuerySocket.MAX_ATTEMPTS; attempt += 1) {
+        const response = await this.send(einfo, this.pack(request.header, request.payload, challenge), duration);
 
-      challenge = response.readInt32LE(5);
+        if (response.length < 9 || response[4] !== 0x41) return response;
+
+        challenge = response.readInt32LE(5);
+      }
+
+      throw new Error('Maximum allowed challenge attempts reached.');
+    } finally {
+      this.active -= 1;
+      if (this.active === 0) this.close();
     }
-
-    throw new Error('Maximum allowed challenge attempts reached.');
   }
+
+  public close = (): void => {
+    this.socket?.close();
+    this.socket = undefined;
+  };
 
   public info = async (address: string, port: number | string, timeout: number = 1000) => {
     const query: Buffer = await this.solicit(
