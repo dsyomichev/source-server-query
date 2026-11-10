@@ -1,6 +1,12 @@
 import dgram, { BindOptions, Socket } from 'dgram';
 import { AddressInfo } from 'net';
 
+interface Request {
+  header: string;
+  payload?: string;
+  challenge?: number;
+}
+
 class SourceQuerySocket {
   public port?: number;
 
@@ -11,6 +17,12 @@ class SourceQuerySocket {
   public fd?: number;
 
   private socket?: Socket;
+
+  private static readonly A2S_INFO: Request = { header: 'T', payload: 'Source Engine Query' };
+  private static readonly A2S_PLAYER: Request = { header: 'U', challenge: -1 };
+  private static readonly A2S_RULES: Request = { header: 'V', challenge: -1 };
+
+  private static MAX_ATTEMPTS = 3;
 
   public constructor(options: BindOptions = {}) {
     if (options.port !== undefined) this.port = options.port;
@@ -118,34 +130,27 @@ class SourceQuerySocket {
       prologue.writeInt32LE(challenge);
     }
 
-    return Buffer.concat([preamble, request, data, prologue, preamble]);
+    return Buffer.concat([preamble, request, data, prologue]);
   }
 
-  private async solicit(
-    einfo: AddressInfo,
-    header: string,
-    payload: string | undefined,
-    duration: number
-  ): Promise<Buffer> {
-    const request: Buffer = this.pack(header, payload);
-    const challenge: Buffer = await this.send(einfo, request, duration);
-    const type: string = challenge.slice(4, 5).toString();
+  private async solicit(einfo: AddressInfo, request: Request, duration: number): Promise<Buffer> {
+    let challenge = request.challenge;
 
-    if (type === 'A') {
-      const challenger: number = challenge.readInt32LE(5);
-      const result: Buffer = this.pack(header, payload, challenger);
+    for (let attempt = 0; attempt < SourceQuerySocket.MAX_ATTEMPTS; attempt += 1) {
+      const response = await this.send(einfo, this.pack(request.header, request.payload, challenge), duration);
 
-      return await this.send(einfo, result, duration);
+      if (response.length < 9 || response[4] !== 0x41) return response;
+
+      challenge = response.readInt32LE(5);
     }
 
-    return challenge;
+    throw new Error('Maximum allowed challenge attempts reached.');
   }
 
   public info = async (address: string, port: number | string, timeout: number = 1000) => {
     const query: Buffer = await this.solicit(
       { address, port: parseInt(port as string, 10), family: '' },
-      'T',
-      'Source Engine Query',
+      SourceQuerySocket.A2S_INFO,
       timeout
     );
 
@@ -248,8 +253,7 @@ class SourceQuerySocket {
   public players = async (address: string, port: number | string, timeout: number = 1000) => {
     const query: Buffer = await this.solicit(
       { address, port: parseInt(port as string, 10), family: '' },
-      'U',
-      undefined,
+      SourceQuerySocket.A2S_PLAYER,
       timeout
     );
 
@@ -283,8 +287,7 @@ class SourceQuerySocket {
   public rules = async (address: string, port: string | number, timeout = 1000) => {
     const query: Buffer = await this.solicit(
       { address, port: parseInt(port as string, 10), family: '' },
-      'V',
-      undefined,
+      SourceQuerySocket.A2S_RULES,
       timeout
     );
 
