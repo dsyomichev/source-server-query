@@ -2,7 +2,7 @@ import dgram, { BindOptions, Socket } from 'dgram';
 import { AddressInfo } from 'net';
 
 interface Request {
-  header: string;
+  header: number;
   payload?: string;
   challenge?: number;
 }
@@ -20,11 +20,11 @@ class SourceQuerySocket {
 
   private active: number = 0;
 
-  private static readonly A2S_INFO: Request = { header: 'T', payload: 'Source Engine Query' };
-  private static readonly A2S_PLAYER: Request = { header: 'U', challenge: -1 };
-  private static readonly A2S_RULES: Request = { header: 'V', challenge: -1 };
+  private static readonly A2S_INFO: Request = { header: 0x54, payload: 'Source Engine Query' };
+  private static readonly A2S_PLAYER: Request = { header: 0x55, challenge: -1 };
+  private static readonly A2S_RULES: Request = { header: 0x56, challenge: -1 };
 
-  private static MAX_ATTEMPTS = 3;
+  private static readonly MAX_ATTEMPTS = 3;
 
   public constructor(options: BindOptions = {}) {
     if (options.port !== undefined) this.port = options.port;
@@ -112,11 +112,11 @@ class SourceQuerySocket {
     });
   }
 
-  private pack(header: string, payload?: string, challenge?: number): Buffer {
+  private pack(header: number, payload?: string, challenge?: number): Buffer {
     const preamble: Buffer = Buffer.alloc(4);
     preamble.writeInt32LE(-1, 0);
 
-    const request: Buffer = Buffer.from(header);
+    const request: Buffer = Buffer.from([header]);
 
     const data: Buffer = payload ? Buffer.concat([Buffer.from(payload), Buffer.alloc(1)]) : Buffer.alloc(0);
 
