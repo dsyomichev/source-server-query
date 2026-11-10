@@ -3,7 +3,8 @@
   "compilerOptions": {
     "outDir": "dist",
     "lib": ["es2020"],
-    "declaration": true
+    "declaration": true,
+    "types": ["node"]
   },
   "include": ["index.ts"],
   "exclude": ["node_modules"]
